@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#121827"><meta name="description" content="吸一口氣，讓氣球去旅行。輕鬆的吹氣球飛行遊戲，支援鍵盤、觸控與本機紀錄。">
+  <title>吹氣球 — WILD AIR CLUB</title><link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="assets/icons/icon-192.png"><link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="吹氣球">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <a class="brand" href="./" aria-label="吹氣球首頁"><span class="brand-mark">↗</span><span>WILD AIR<small>CLUB</small></span></a>
+      <div class="header-right"><span class="edition">LOCAL ARCADE / 04</span><button id="install-game" class="icon-button" hidden>＋ 安裝遊戲</button><button id="update-game" class="icon-button" hidden>↻ 更新版本</button><button id="sound" class="icon-button" aria-pressed="true" title="切換音效">♪ <span>音效開</span></button><button id="records" class="icon-button">↗ <span>飛行紀錄</span></button></div>
+    </header>
+    <div class="intro"><div><span class="eyebrow">吹氣球 / THE UNPREDICTABLE FLIGHT</span><h1>吹飽氣。<em>亂飛去！</em><span>↝</span></h1></div><p>方向？氣球說了算。<br>一口氣出發，下一秒可能又飛回來。</p></div>
+    <div class="game-layout">
+    <section class="play-area" aria-label="氣球飛行遊戲">
+      <canvas id="scene" aria-label="街機風格的氣球飛行場景">你的瀏覽器需要支援 Canvas。</canvas>
+      <div class="stage-bar"><span><i></i> THE FLIGHT ZONE</span><span>360° CHAOS</span></div>
+      <div class="flight-stats" aria-label="即時飛行數據"><div><span id="position-label">離起點</span><strong id="distance">0.0<small>m</small></strong></div><div><span>目前高度</span><strong id="height">0.0<small>m</small></strong></div></div>
+      <div id="flight-label" class="flight-label" hidden>氣球失控中 <span>●</span></div>
+      <div class="stage-bottom"><span class="best-chip">BEST RANGE <b id="best">—</b></span><span class="wind-chip">噴氣中，方向由氣球決定</span></div>
+      <div id="hint" class="scene-hint">先吹氣，再讓氣球自由發揮！<span>↓</span></div>
+      <div id="result" class="overlay" hidden>
+        <section class="result-card" aria-labelledby="result-title"><span class="eyebrow" id="result-badge">FLIGHT COMPLETE</span><h2 id="result-title">這一口氣，飛得真好。</h2><p id="result-comment"></p><div class="result-grid"><div><span>最遠離起點</span><b id="result-distance"></b></div><div><span>最高高度</span><b id="result-height"></b></div><div><span>飛行時間</span><b id="result-time"></b></div></div><div id="landing-note" class="landing-note"></div><button id="again" class="primary-button">再吹一顆 <span>↗</span></button><p class="tiny">按 R 也可以開始下一趟旅行</p></section>
+      </div>
+    </section>
+    <aside class="control-deck" aria-label="遊戲控制">
+      <div class="deck-heading"><span>PLAYER 01</span></div>
+      <div class="breath-panel"><div class="panel-title"><span class="step-number">01</span><span>先來一口氣<small>每口氣約 2 秒，放開就能吸氣。</small></span></div><div class="meter-label"><span id="breath-label">肺活量</span><b id="breath-value">100%</b></div><div class="meter breath-meter" role="progressbar" aria-label="肺活量" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><span id="breath-fill"></span></div><div class="meter-label balloon-label"><span>氣球飽滿度</span><b id="volume-value">0%</b></div><div class="meter volume-meter" role="progressbar" aria-label="氣球飽滿度" aria-valuemin="0" aria-valuemax="150" aria-valuenow="0"><span id="volume-fill"></span></div></div>
+      <p id="risk-note" class="risk-note" role="status">安全區 · 超過 50% 開始有爆裂風險</p>
+      <button id="blow" class="blow-button"><span class="button-icon">≈</span><span><b>按住吹氣</b><small>放開吸氣</small></span><kbd>SPACE</kbd></button>
+      <div class="launch-panel"><div class="launch-copy"><span class="step-number">02</span><span>把方向交給氣球</span></div><button id="launch" class="launch-button" disabled><b>噴！</b><span>LET IT GO ↗</span><kbd>X</kbd></button></div>
+      <p class="deck-note">向右落地才成功，向左落地會失敗。<br>低於 5 m 掌聲 · 5 m 熱烈鼓掌<br>15 m 驚嘆 · 30 m 全場安可</p>
+    </aside>
+    </div>
+      <details class="audio-lab"><summary>♪ 音效試聽</summary><label for="sample-volume">漏氣試聽氣量 <output id="sample-volume-value">100%</output></label><input id="sample-volume" type="range" min="30" max="150" value="100" step="10"><div class="preview-buttons"><button data-preview="inhale">吸氣</button><button data-preview="balloon">氣球漏氣</button><button data-preview="laughter">爆裂笑聲</button><button data-preview="disappointed">失落</button><button data-preview="applause">鼓掌</button><button data-preview="wow">驚嘆</button><button data-preview="encore">安可</button></div><p id="audio-status" role="status">第一次按鍵後啟用音效</p></details>
+    <footer><span><i></i> 紀錄只留在這台瀏覽器裡</span><span>按住 <kbd>空白鍵</kbd> 吹氣 · <kbd>X</kbd> 噴出 · <kbd>R</kbd> 再玩</span><span>NO STRAIGHT LINES. JUST GOOD TIMES.</span></footer>
+    <details class="audio-credits"><summary>音效來源與授權</summary><p>氣球聲參考／取樣自 <a href="https://www.youtube.com/shorts/5ZbmQRrjiJ4" target="_blank" rel="noopener">Curious Eyes — Letting air out of Balloon</a>；「Crowd Wow Surprise People」by <a href="https://freesound.org/people/dersuperanton/sounds/437645/" target="_blank" rel="noopener">dersuperanton</a>；「encore cheering.wav」by <a href="https://freesound.org/people/tim.kahn/sounds/191527/" target="_blank" rel="noopener">tim.kahn</a>。驚嘆與安可為 <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>，本遊戲裁切、調音量並調整氣球音高。掌聲／笑聲來自 <a href="https://sfxmint.com/sets/video-editing" target="_blank" rel="noopener">SFXMint</a>，CC0。吸氣取自 <a href="https://www.youtube.com/watch?v=l3MzhdcSZNQ" target="_blank" rel="noopener">Music Sound Effects — 急促的呼吸聲</a>，擷取呼氣之後的吸氣段，保留原速。兩段 YouTube 素材依使用者指定剪輯，未標示 CC 授權。素材均打包於本機。</p></details>
+    <p id="notice" class="notice" role="status" hidden></p>
+    <span id="announcement" class="sr-only" role="status" aria-live="polite"></span>
+    <dialog id="history"><div class="dialog-heading"><div><span class="eyebrow">FLIGHT LOG / LOCAL RECORDS</span><h2>亂飛，也要留個紀錄。</h2></div><button id="close-history" class="icon-button" aria-label="關閉紀錄">✕</button></div><div id="record-best" class="record-best"></div><p class="history-note">最近 20 次 · 上方兩項各取成功紀錄的單次最大值，不累加。落在起點左側算失敗，不列入最佳成績；爆裂記為 💥 0 m。</p><div class="table-wrap"><table><thead><tr><th>出發時間</th><th>距離</th><th>最高</th><th>時間</th><th>落點</th></tr></thead><tbody id="history-body"></tbody></table><p id="empty-history">還沒有飛行紀錄。吹一顆氣球，開始你的第一趟旅行！</p></div><div class="history-footer"><span>舊版紀錄保留；舊版沒有落點資訊。清除網站資料會移除紀錄。</span><button id="clear-records" class="text-button">清除紀錄</button></div><div id="clear-confirm" hidden><p>確定清除所有飛行與最佳紀錄？</p><button id="confirm-clear" class="text-button">確定清除</button> <button id="cancel-clear" class="text-button">保留紀錄</button></div></dialog>
+  </main><script src="engine.js"></script><script src="audio-assets.js"></script><script src="sound.js"></script><script src="game.js"></script><script src="pwa.js"></script>
+</body>
+</html>

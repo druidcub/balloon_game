@@ -1,0 +1,18 @@
+{
+  "balloon": {
+    "url": "https://www.youtube.com/shorts/5ZbmQRrjiJ4",
+    "title": "Letting air out of Balloon, sound effect",
+    "channel": "Curious Eyes",
+    "start": 2.12,
+    "end": 3.06,
+    "processing": "mono 44100 Hz, HP65 LP3500, loudnorm -22 LUFS, fade edges, 120ms overlap-add loop at runtime"
+  },
+  "inhale": {
+    "url": "https://www.youtube.com/watch?v=l3MzhdcSZNQ",
+    "title": "急促的呼吸聲（Rapid breathing）",
+    "channel": "Music Sound Effects",
+    "start": 3.74,
+    "end": 4.3,
+    "processing": "inhale segment after exhale, original speed, mono 44100 Hz, HP100 LP3800, loudnorm -21 LUFS, fade edges"
+  }
+}
