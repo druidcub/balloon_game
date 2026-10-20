@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id);
-  const {BalloonGame,RecordStore,DuelMatch,normalizePlayerNames,groundMarkers}=window.BalloonEngine;
+  const {BalloonGame,RecordStore,DuelMatch,RecordReviewCamera,normalizePlayerNames,groundMarkers}=window.BalloonEngine;
   const game=new BalloonGame();
   const commentator=new window.BalloonEngine.Commentator();
   let storage;try{storage=window.localStorage;}catch(e){storage={getItem(){throw e;},setItem(){throw e;}};}
@@ -14,13 +14,14 @@
   const actor=()=>isDuel()?match.current:0;
   const pausedNow=()=>document.hidden||$('history').open||$('settings').open;
   const flightResult=()=>({...game.result(),playerId:actor()+1,playerName:preferences.names[actor()],mode:preferences.mode});
-  const canvas=$('scene'),ctx=canvas.getContext('2d');
+  const canvas=$('scene'),ctx=canvas.getContext('2d'),playArea=canvas.closest('.play-area'),resultCard=$('result').querySelector('.result-card');
   let w=0,h=0,dpr=1,clock=0,last=0,accumulator=0,scale=48,camX=0,camY=0,ended=false,muted=false,burstFX=false;
+  let recordReview=null,reviewDrag=null,reviewing=false,suppressReviewClick=false;
   let keyHeld=false,pointerHeld=false,resizeObserver,savedResult=null,savedBest=false;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sound=new window.BalloonAudio.Sound();
   function notice(text){$('notice').textContent=text;$('notice').hidden=false;}
-  function refreshBest(){groundFlags=groundMarkers(records.data);$('ground-markers').textContent=groundFlags.map(flag=>flag.label+'：'+flag.position.toFixed(1)+' m'+(flag.failed?'，失敗':'')).join('；');$('best').textContent=records.data.bestDistance?`${records.data.bestDistance.toFixed(1)} m`:'—';}
+  function refreshBest(){groundFlags=groundMarkers(records.data);if(recordReview){recordReview.setMarkers(groundFlags);syncReviewControls();}$('ground-markers').textContent=groundFlags.map(flag=>flag.label+'：'+flag.position.toFixed(1)+' m'+(flag.failed?'，失敗':'')).join('；');$('best').textContent=records.data.bestDistance?`${records.data.bestDistance.toFixed(1)} m`:'—';}
   if(!records.available)notice('目前無法讀寫瀏覽器紀錄；仍可遊玩，本次紀錄暫存於記憶體。');
   function syncHold(){if(keyHeld||pointerHeld){sound.init();game.press();}else game.release();}
   function releaseAll(){keyHeld=false;pointerHeld=false;game.release();}
@@ -30,8 +31,8 @@
       if(!force&&!ended&&(game.phase==='flying'||game.phase==='burst')){notice('競賽中的這一趟需完成後才能換人。');return;}
       if(match.complete)match=new DuelMatch(preferences.names);else if(match.waitingForNext)match.nextTurn();
     }
-    if(records.available)$('notice').hidden=true;$('result').classList.remove('match-finished');renderMatch();releaseAll();sound.reset();game.reset();ended=false;burstFX=false;savedResult=null;savedBest=false;scale=48;camX=0;camY=0;previousHint='';$('result').hidden=true;$('hint').hidden=false;$('hint').innerHTML='先吹氣，再讓氣球自由發揮！<span>↓</span>';$('flight-label').hidden=true;$('announcement').textContent='新氣球準備好了。';}
-  function finish(){ended=true;const result=savedResult||flightResult(),best=savedResult?savedBest:records.add(result);refreshBest();if(!records.available)notice('紀錄無法寫入瀏覽器；關閉頁面後本次紀錄將不會保留。');
+    setRecordReview(false,true);if(records.available)$('notice').hidden=true;$('result').classList.remove('match-finished');renderMatch();releaseAll();sound.reset();game.reset();ended=false;burstFX=false;savedResult=null;savedBest=false;scale=48;camX=0;camY=0;previousHint='';$('result').hidden=true;$('hint').hidden=false;$('hint').innerHTML='先吹氣，再讓氣球自由發揮！<span>↓</span>';$('flight-label').hidden=true;$('announcement').textContent='新氣球準備好了。';}
+  function finish(){ended=true;setRecordReview(false,true);const result=savedResult||flightResult(),best=savedResult?savedBest:records.add(result);refreshBest();if(!records.available)notice('紀錄無法寫入瀏覽器；關閉頁面後本次紀錄將不會保留。');
     const burst=result.outcome==='burst',wrongWay=!burst&&window.BalloonEngine.isWrongWay(result),reward=window.BalloonEngine.rewardForResult(result);
     $('result').classList.toggle('burst-result',burst);
     $('result-badge').textContent=burst?'POP! · 爆掉了，0 m':wrongWay?'WRONG WAY · 飛錯方向了':best?'NEW PERSONAL BEST · 新紀錄':'FLIGHT COMPLETE · 平安著陸';
@@ -49,6 +50,51 @@
     }else $('again').textContent='再吹一顆 ↗';
     $('result').hidden=false;$('flight-label').hidden=true;$('announcement').textContent=burst?'氣球爆裂，本次零公尺。':wrongWay?'落在起點左側，本次失敗，不更新最佳成績。':`飛行結束，最遠 ${result.distance} 公尺，最高 ${result.height} 公尺。`;if(isDuel()&&match.complete){$('announcement').textContent=$('result-title').textContent;sound.finish(match.winners.length===1&&Math.max(...match.players.map(player=>player.best))>0?'encore':'disappointed');}else sound.finish(reward.id);$('again').focus({preventScroll:true});
   }
+  function stopReviewDrag(event){
+    if(!reviewDrag||event&&event.pointerId!==reviewDrag.id)return;
+    const id=reviewDrag.id;if(event?.type==='pointerup'&&reviewDrag.active)suppressReviewClick=true;reviewDrag=null;playArea.classList.remove('is-dragging');if(playArea.hasPointerCapture(id))playArea.releasePointerCapture(id);
+  }
+  function syncReviewControls(){
+    if(!recordReview)return;
+    const input=$('review-position');input.min=String(recordReview.minCenter);input.max=String(recordReview.maxCenter);input.value=String(recordReview.center);input.disabled=recordReview.maxCenter-recordReview.minCenter<1e-8;
+    input.setAttribute('aria-valuetext','畫面中心 '+recordReview.center.toFixed(1)+' 公尺');$('review-range').textContent=recordReview.left.toFixed(1)+'～'+recordReview.right.toFixed(1)+' m';
+  }
+  function setRecordReview(enabled,clearCamera=false){
+    stopReviewDrag();
+    if(enabled){
+      if(!ended||$('result').hidden)return;
+      if(!recordReview){const launchX=w*(w<600?.34:.29);recordReview=new RecordReviewCamera(groundFlags,w,scale,(camX+w/2-launchX)/scale);}
+      syncReviewControls();
+    }else if(clearCamera)recordReview=null;
+    reviewing=enabled;playArea.classList.toggle('reviewing',enabled);$('result').classList.toggle('is-faded',enabled);$('review-controls').hidden=!enabled;
+  }
+  playArea.tabIndex=0;
+  playArea.addEventListener('pointerdown',event=>{
+    if(!ended||$('result').hidden||pausedNow()||event.isPrimary===false||event.button!==0||event.target.closest('#review-controls'))return;
+    const insideCard=event.target.closest('.result-card');if(insideCard&&!reviewing||!insideCard&&event.target.closest('button,input,a'))return;
+    suppressReviewClick=false;if(!insideCard){setRecordReview(true);playArea.focus({preventScroll:true});}reviewDrag={id:event.pointerId,x:event.clientX,y:event.clientY,center:recordReview.center,active:false};
+  });
+  playArea.addEventListener('pointermove',event=>{
+    if(!reviewing||!recordReview||!reviewDrag||event.pointerId!==reviewDrag.id)return;
+    const dx=event.clientX-reviewDrag.x,dy=event.clientY-reviewDrag.y;
+    if(Math.abs(dx)<6||Math.abs(dx)<Math.abs(dy))return;
+    event.preventDefault();reviewDrag.active=true;if(!playArea.hasPointerCapture(event.pointerId))playArea.setPointerCapture(event.pointerId);playArea.classList.add('is-dragging');recordReview.setCenter(reviewDrag.center-dx/recordReview.scale);syncReviewControls();
+  });
+  ['pointerup','pointercancel','lostpointercapture'].forEach(type=>playArea.addEventListener(type,stopReviewDrag));
+  window.addEventListener('blur',()=>stopReviewDrag());window.addEventListener('pointerup',stopReviewDrag);
+  playArea.addEventListener('wheel',event=>{
+    if(!reviewing||!recordReview||pausedNow()||event.target.closest('#review-controls'))return;
+    const delta=event.deltaX||(event.shiftKey?event.deltaY:0);if(!delta)return;
+    event.preventDefault();recordReview.panPixels(delta*(event.deltaMode===1?16:event.deltaMode===2?w:1));syncReviewControls();
+  },{passive:false});
+  playArea.addEventListener('keydown',event=>{
+    if(!reviewing||!recordReview||event.target!==playArea)return;
+    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();recordReview.panPixels((event.key==='ArrowLeft'?-1:1)*80);syncReviewControls();}
+    else if(event.key==='Home'||event.key==='End'){event.preventDefault();recordReview.setCenter(event.key==='Home'?recordReview.minCenter:recordReview.maxCenter);syncReviewControls();}
+  });
+  $('review-position').addEventListener('input',event=>{if(reviewing&&recordReview){recordReview.setCenter(Number(event.target.value));syncReviewControls();}});
+  resultCard.addEventListener('click',event=>{if(reviewing){event.preventDefault();event.stopImmediatePropagation();if(suppressReviewClick){suppressReviewClick=false;return;}setRecordReview(false);resultCard.focus({preventScroll:true});}},true);
+  resultCard.addEventListener('keydown',event=>{if(reviewing&&(event.key==='Enter'||event.key===' ')){event.preventDefault();event.stopImmediatePropagation();setRecordReview(false);}},true);
   function renderMatch(){
     const board=$('duel-scoreboard');board.hidden=!isDuel();board.replaceChildren();
     $('player-indicator').textContent=isDuel()?match.complete?'競賽完成':match.names[match.current]+(match.waitingForNext?' · 本次完成':' · 第 '+(match.players[match.current].attempts.length+1)+' / 5 次'):preferences.names[0]+' · 單人自由飛行';
@@ -86,7 +132,7 @@
   $('clear-records').addEventListener('click',()=>{$('clear-confirm').hidden=false;});$('cancel-clear').addEventListener('click',()=>{$('clear-confirm').hidden=true;});$('confirm-clear').addEventListener('click',()=>{records.clear();refreshBest();renderHistory();$('clear-confirm').hidden=true;if(!records.available)notice('無法儲存清除結果；請檢查瀏覽器的網站儲存權限。');});
   document.querySelectorAll('[data-preview]').forEach(button=>button.addEventListener('click',()=>{sound.preview(button.dataset.preview,Number($('sample-volume').value)/100);$('audio-status').textContent=muted?'目前已靜音，請先開啟音效':'試聽：'+button.textContent+(button.dataset.preview==='balloon'?' · '+$('sample-volume').value+'% 氣量':'');}));
   $('sample-volume').addEventListener('input',()=>{$('sample-volume-value').textContent=$('sample-volume').value+'%';});
-  function resize(){const r=canvas.getBoundingClientRect();w=r.width;h=r.height;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}
+  function resize(){const r=canvas.getBoundingClientRect();w=r.width;h=r.height;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);if(recordReview){stopReviewDrag();recordReview.resize(w);syncReviewControls();}}
   resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);refreshBest();
   const path=(points,fill,stroke,width=1)=>{ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}};
   function ellipse(x,y,rx,ry,color){ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}
@@ -227,7 +273,9 @@
   let uiTime=0;
   function frame(stamp){requestAnimationFrame(frame);const dt=last?Math.min((stamp-last)/1000,.05):0;last=stamp;
     const paused=pausedNow();if(!paused){clock+=dt;accumulator+=dt;while(accumulator>=1/120){game.update(1/120);accumulator-=1/120;}if(game.phase==='burst'&&!burstFX){burstFX=true;savedResult=flightResult();savedBest=records.add(savedResult);refreshBest();releaseAll();sound.burst();$('hint').hidden=true;$('announcement').textContent='氣球爆裂！本次零公尺。';}if((game.phase==='done'||game.phase==='burst'&&game.burstTime>.75)&&!ended)finish();}
+    if(recordReview){scale=recordReview.scale;camX=w*(w<600?.34:.29)+recordReview.center*scale-w/2;camY=0;}else{
     const home=isDuel()&&match.complete,cameraDt=dt*game.flightSpeed,targetScale=(home||game.phase==='ready'||game.phase==='burst')?48:Math.max(19,48-game.distance*1.1);scale+=(targetScale-scale)*Math.min(1,cameraDt*2);const targetX=(home||game.phase==='ready'||game.phase==='burst')?0:(game.x>=0?Math.max(0,game.x*scale+w*(w<600?.34:.29)-w*.60):Math.min(0,game.x*scale+w*(w<600?.34:.29)-w*.30)),targetY=(home||game.phase==='ready'||game.phase==='burst')?0:Math.max(0,game.y*scale-h*.52);camX+=(targetX-camX)*Math.min(1,cameraDt*4);camY+=(targetY-camY)*Math.min(1,cameraDt*4);
+    }
     uiTime+=dt;if(uiTime>.04){ui();sound.update(game,clock,pausedNow());uiTime=0;}draw();
   }
   renderMatch();ui();requestAnimationFrame(frame);

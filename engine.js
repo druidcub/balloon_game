@@ -226,10 +226,26 @@
     if(data.bestDistance>0)markers.push({position:data.bestFlight?position(data.bestFlight):data.bestDistance,label:'BEST '+data.bestDistance.toFixed(1)+'m',best:true,failed:false});
     return markers;
   }
+  class RecordReviewCamera {
+    constructor(markers,width,scale,center=0){
+      this.width=Math.max(1,width);this.preferredScale=Math.max(1,scale);this.center=Number.isFinite(center)?center:0;this.setMarkers(markers);
+    }
+    setMarkers(markers){
+      const positions=markers.map(marker=>marker.position).filter(Number.isFinite);if(!positions.length)positions.push(0);
+      this.left=Math.min(...positions)-10;this.right=Math.max(...positions)+10;this.resize(this.width);
+    }
+    resize(width){
+      this.width=Math.max(1,width);this.scale=Math.max(this.preferredScale,this.width/(this.right-this.left));
+      const middle=(this.left+this.right)/2,half=this.width/(2*this.scale);
+      this.minCenter=Math.min(middle,this.left+half);this.maxCenter=Math.max(middle,this.right-half);this.setCenter(this.center);
+    }
+    setCenter(center){if(Number.isFinite(center))this.center=clamp(center,this.minCenter,this.maxCenter);return this.center;}
+    panPixels(pixels){return this.setCenter(this.center+pixels/this.scale);}
+  }
   function isWrongWay(result){return result.outcome==='wrong-way'||Number.isFinite(result.landingX)&&result.landingX<0;}
   function isSuccessfulFlight(result){return result.outcome!=='burst'&&!isWrongWay(result);}
   function recordMaxima(flights){return flights.filter(isSuccessfulFlight).reduce((best,f)=>({distance:Math.max(best.distance,f.distance),height:Math.max(best.height,f.height)}),{distance:0,height:0});}
   function rewardForResult(result){return result.outcome==='burst'?{id:'burst',label:'砰！觀眾笑翻了。'}:isWrongWay(result)?{id:'disappointed',label:'方向錯了，再試一次。'}:rewardForDistance(result.distance);}
   function rewardForDistance(distance){return distance>=30?{id:'encore',label:'全場安可！'}:distance>=15?{id:'wow',label:'哇！漂亮！'}:distance>=5?{id:'applause',label:'熱烈鼓掌！'}:{id:'polite',label:'掌聲鼓勵！'};}
-  const api={BalloonGame,RecordStore,DuelMatch,normalizePlayerNames,groundMarkers,rewardForDistance,rewardForResult,isWrongWay,isSuccessfulFlight,recordMaxima,aerodynamics,nozzleFrame,Commentator,commentCategories,COMMENT_POOLS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BalloonEngine=api;
+  const api={BalloonGame,RecordStore,DuelMatch,RecordReviewCamera,normalizePlayerNames,groundMarkers,rewardForDistance,rewardForResult,isWrongWay,isSuccessfulFlight,recordMaxima,aerodynamics,nozzleFrame,Commentator,commentCategories,COMMENT_POOLS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BalloonEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

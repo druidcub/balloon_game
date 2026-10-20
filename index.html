@@ -21,10 +21,10 @@
       <p id="ground-markers" class="sr-only"></p><div class="stage-bar"><span><i></i> THE FLIGHT ZONE</span><span>360° CHAOS</span></div>
       <div class="flight-stats" aria-label="即時飛行數據"><div><span id="position-label">離起點</span><strong id="distance">0.0<small>m</small></strong></div><div><span>目前高度</span><strong id="height">0.0<small>m</small></strong></div></div>
       <div id="flight-label" class="flight-label" hidden>氣球失控中 <span>●</span></div>
-      <div class="stage-bottom"><span class="best-chip">BEST RANGE <b id="best">—</b></span><span class="wind-chip">地面旗標：BEST · 第 n 次</span></div>
+      <div class="stage-bottom"><span class="best-chip">BEST RANGE <b id="best">—</b></span><span class="wind-chip">地面旗標：BEST · 第 n 次</span><div id="review-controls" class="review-controls" hidden><span>左右拖曳查看 · 點結算視窗還原</span><label class="sr-only" for="review-position">瀏覽紀錄位置</label><input id="review-position" type="range" min="-10" max="10" step="any"><output id="review-range"></output></div></div>
       <div id="hint" class="scene-hint">先吹氣，再讓氣球自由發揮！<span>↓</span></div>
       <div id="result" class="overlay" hidden>
-        <section class="result-card" aria-labelledby="result-title"><span class="eyebrow" id="result-badge">FLIGHT COMPLETE</span><h2 id="result-title">這一口氣，飛得真好。</h2><p id="result-comment"></p><div class="result-grid"><div><span>最遠離起點</span><b id="result-distance"></b></div><div><span>最高高度</span><b id="result-height"></b></div><div><span>飛行時間</span><b id="result-time"></b></div></div><div id="landing-note" class="landing-note"></div><button id="again" class="primary-button">再吹一顆 <span>↗</span></button><p class="tiny">按 R 也可以開始下一趟旅行</p></section>
+        <section class="result-card" aria-labelledby="result-title" tabindex="0"><span class="eyebrow" id="result-badge">FLIGHT COMPLETE</span><h2 id="result-title">這一口氣，飛得真好。</h2><p id="result-comment"></p><div class="result-grid"><div><span>最遠離起點</span><b id="result-distance"></b></div><div><span>最高高度</span><b id="result-height"></b></div><div><span>飛行時間</span><b id="result-time"></b></div></div><div id="landing-note" class="landing-note"></div><button id="again" class="primary-button">再吹一顆 <span>↗</span></button><p class="tiny">點後方場景可淡化視窗、左右拖曳看紀錄；按 R 開始下一趟</p></section>
       </div>
     </section>
     <aside class="control-deck" aria-label="遊戲控制">
