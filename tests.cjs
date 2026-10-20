@@ -110,3 +110,23 @@ for(const volume of [.2,.4,1])for(const seed of [.009,.173,.5]){
 }
 const fastBreath=new SpeedBalloonGame();fastBreath.press();step(fastBreath,2);assert(fastBreath.breath<1e-12);assert(Math.abs(fastBreath.volume-.41)<1e-9,'Blowing speed remains unchanged');fastBreath.release();step(fastBreath,.95);assert.equal(fastBreath.breath,1);
 console.log('PASS: 2x flight and deflation, identical trajectories at half elapsed time, stable substeps, unchanged blowing and inhaling.');
+
+const {DuelMatch,normalizePlayerNames,groundMarkers}=box.module.exports;
+const duel=new DuelMatch(['小風','阿球']),rounds=[12,5,3,8,4,9,6,11,7,10];
+for(let n=0;n<10;n++){
+  assert.equal(duel.current,n%2,'Players strictly alternate');
+  const result=n===2?{...fixture(999,99,-8),outcome:'wrong-way'}:n===4?popResult:fixture(rounds[n],3,rounds[n]);
+  assert.equal(duel.submit(result),true);assert.equal(duel.submit(result),false,'One result per turn, including burst');
+  assert.equal(duel.players[n%2].attempts.length,Math.floor(n/2)+1);
+  if(n<9){assert.equal(duel.complete,false);assert.equal(duel.nextTurn(),true);assert.equal(duel.nextTurn(),false);}else assert.equal(duel.nextTurn(),false);
+}
+assert.equal(duel.complete,true);assert.equal(duel.players[0].best,12);assert.equal(duel.players[1].best,11);assert.equal(duel.winners.join(','),'0','Compare each player max, not sum');assert.equal(duel.players[0].attempts[1].score,0);assert.equal(duel.players[0].attempts[2].score,0);assert.equal(duel.submit(normal),false,'No eleventh shot');
+const tie=new DuelMatch();for(let n=0;n<10;n++){tie.submit(fixture(5,3,5));tie.nextTurn();}assert.equal(tie.winners.join(','),'0,1');
+assert.equal(normalizePlayerNames(['  ','']).join(','),'P1,P2');assert.notEqual(...normalizePlayerNames(['同名','同名']));assert(Array.from(normalizePlayerNames(['😀'.repeat(20),'B'])[0]).length<=12);
+let numberedRaw=null;const numberedMemory={getItem:()=>numberedRaw,setItem:(_,value)=>numberedRaw=value},numbered=new RecordStore(numberedMemory);
+numbered.add({...fixture(80,20,30),farthestX:80,playerId:1,playerName:'小風'});for(let n=0;n<25;n++)numbered.add({...fixture(n+1,3,n+1),farthestX:n+1,playerId:2,playerName:'阿球'});
+const numberedReload=new RecordStore(numberedMemory),flags=groundMarkers(numberedReload.data);assert.equal(numberedReload.data.totalFlights,26);assert.equal(numberedReload.data.flights[0].sequence,26);assert.equal(numberedReload.data.flights.at(-1).sequence,7);assert.equal(flags.filter(flag=>!flag.best).length,20);assert.equal(flags.find(flag=>flag.best).position,80,'Best marker survives beyond last 20 flights');assert.equal(numberedReload.data.bestFlight.playerName,'小風');
+numberedReload.add({...fixture(10,4,-8),farthestX:-10,outcome:'wrong-way'});assert.equal(numberedReload.data.flights[0].sequence,27);assert(groundMarkers(numberedReload.data).some(flag=>flag.position===-10&&flag.failed));numberedReload.add(popResult);assert(groundMarkers(numberedReload.data).some(flag=>flag.position===0&&flag.failed));
+const oldNumbering=new RecordStore({getItem:()=>JSON.stringify({version:1,scoringVersion:2,bestDistance:25,bestHeight:12,flights:successes}),setItem(){}});assert.equal(oldNumbering.data.flights.map(f=>f.sequence).join(','),'3,2,1');assert.equal(groundMarkers(oldNumbering.data).find(flag=>flag.best).position,25);oldNumbering.clear();assert.equal(oldNumbering.data.totalFlights,0);assert.equal(groundMarkers(oldNumbering.data).length,0);
+for(const result of routes){assert(Math.abs(Math.abs(result.farthestX)-result.distance)<.11,'Signed farthest position must match recorded maximum');}
+console.log('PASS: alternating 5-shot duel, max scoring, zero-score failures, duplicate protection, ties, bounded player names, numbered 20-flight flags, lifetime BEST snapshot and legacy migration.');

@@ -7,7 +7,7 @@
   function nozzleFrame(heading,flex=0){const a=heading+flex;return {exhaustX:-Math.cos(a),exhaustY:-Math.sin(a),thrustX:Math.cos(a),thrustY:Math.sin(a)};}
   class BalloonGame {
     constructor(random=Math.random,flightSpeed=2){this.random=random;this.flightSpeed=flightSpeed;this.reset();}
-    reset(){this.phase='ready';this.breath=1;this.volume=0;this.held=false;this.exhausted=false;this.time=0;this.x=0;this.y=1.65;this.vx=0;this.vy=0;this.distance=0;this.peak=0;this.fuel=0;this.angle=0;this.heading=0;this.omega=0;this.torque=0;this.flutter=0;this.flutterTarget=0;this.offset=0;this.offsetTarget=0;this.pulse=1;this.thrust=0;this.thrustX=0;this.thrustY=0;this.exhaustX=-1;this.exhaustY=0;this.angularAcceleration=0;this.dragX=0;this.dragY=0;this.kickTimer=0;this.pathLength=0;this.wind=.18;this.trail=[];this.trailTimer=0;this.startVolume=0;this.riskExposure=0;this.riskLimit=null;this.burstTime=0;this.totalRotation=0;this.turnReversals=0;this.horizontalReversals=0;this.turnSign=0;this.travelSign=0;}
+    reset(){this.phase='ready';this.breath=1;this.volume=0;this.held=false;this.exhausted=false;this.time=0;this.x=0;this.y=1.65;this.vx=0;this.vy=0;this.distance=0;this.farthestX=0;this.peak=0;this.fuel=0;this.angle=0;this.heading=0;this.omega=0;this.torque=0;this.flutter=0;this.flutterTarget=0;this.offset=0;this.offsetTarget=0;this.pulse=1;this.thrust=0;this.thrustX=0;this.thrustY=0;this.exhaustX=-1;this.exhaustY=0;this.angularAcceleration=0;this.dragX=0;this.dragY=0;this.kickTimer=0;this.pathLength=0;this.wind=.18;this.trail=[];this.trailTimer=0;this.startVolume=0;this.riskExposure=0;this.riskLimit=null;this.burstTime=0;this.totalRotation=0;this.turnReversals=0;this.horizontalReversals=0;this.turnSign=0;this.travelSign=0;}
     press(){if(this.phase!=='ready'||this.held)return;this.held=true;this.exhausted=this.breath<.15;}
     release(){this.held=false;this.exhausted=false;}
     get blowing(){return this.phase==='ready'&&this.held&&!this.exhausted&&this.breath>0;}
@@ -61,10 +61,10 @@
       // First contact ends the flight. Interpolate contact so no path penetrates the floor.
       if(nextY<=.12){const fraction=clamp((oldY-.12)/(oldY-nextY),0,1);this.x=oldX+(nextX-oldX)*fraction;this.y=.12;this.phase='done';this.vx=0;this.vy=0;this.fuel=0;this.thrust=0;this.thrustX=0;this.thrustY=0;}
       else{this.x=nextX;this.y=nextY;}
-      this.pathLength+=Math.hypot(this.x-oldX,this.y-oldY);this.distance=Math.max(this.distance,Math.abs(this.x));this.peak=Math.max(this.peak,this.y);
+      this.pathLength+=Math.hypot(this.x-oldX,this.y-oldY);if(Math.abs(this.x)>this.distance)this.farthestX=this.x;this.distance=Math.max(this.distance,Math.abs(this.x));this.peak=Math.max(this.peak,this.y);
       this.trailTimer+=dt;if(this.trailTimer>.035||this.phase==='done'){this.trail.push({x:this.x,y:this.y});if(this.trail.length>1300)this.trail.shift();this.trailTimer=0;}
     }
-    result(){return {distance:Math.round(this.distance*10)/10,height:Math.round(this.peak*10)/10,time:Math.round(this.time*10)/10,volume:Math.round(this.startVolume*100),landingX:Math.round(this.x*10)/10,pathLength:Math.round(this.pathLength*10)/10,totalRotation:this.totalRotation,turnReversals:this.turnReversals,horizontalReversals:this.horizontalReversals,outcome:this.phase==='burst'?'burst':this.x<0?'wrong-way':'landed',model:'jet-chaotic-v6',date:new Date().toISOString()};}
+    result(){return {farthestX:Math.round(this.farthestX*10)/10,distance:Math.round(this.distance*10)/10,height:Math.round(this.peak*10)/10,time:Math.round(this.time*10)/10,volume:Math.round(this.startVolume*100),landingX:Math.round(this.x*10)/10,pathLength:Math.round(this.pathLength*10)/10,totalRotation:this.totalRotation,turnReversals:this.turnReversals,horizontalReversals:this.horizontalReversals,outcome:this.phase==='burst'?'burst':this.x<0?'wrong-way':'landed',model:'jet-chaotic-v6',date:new Date().toISOString()};}
   }
   const COMMENT_POOLS={
     wrongWay:[
@@ -178,15 +178,58 @@
     }
   }
   class RecordStore {
-    constructor(storage){this.storage=storage;this.key='balloon-day.records.v1';this.available=true;this.data={version:1,scoringVersion:2,bestDistance:0,bestHeight:0,flights:[]};try{const raw=JSON.parse(storage.getItem(this.key)||'null');if(raw&&raw.version===1&&Array.isArray(raw.flights)){const valid=n=>Number.isFinite(n)&&n>=0;this.data.flights=raw.flights.filter(f=>f&&valid(f.distance)&&valid(f.height)&&valid(f.time)&&Number.isFinite(Date.parse(f.date))).slice(0,20);const maxima=recordMaxima(this.data.flights);this.data.bestDistance=Math.max(raw.scoringVersion===2&&valid(raw.bestDistance)?raw.bestDistance:0,maxima.distance);this.data.bestHeight=Math.max(raw.scoringVersion===2&&valid(raw.bestHeight)?raw.bestHeight:0,maxima.height);}}catch(e){this.available=false;}}
-    add(flight){const success=isSuccessfulFlight(flight),isBest=success&&flight.distance>this.data.bestDistance;if(success){this.data.bestDistance=Math.max(this.data.bestDistance,flight.distance);this.data.bestHeight=Math.max(this.data.bestHeight,flight.height);}this.data.flights.unshift(flight);this.data.flights=this.data.flights.slice(0,20);this.save();return isBest;}
-    save(){try{this.storage.setItem(this.key,JSON.stringify(this.data));this.available=true;}catch(e){this.available=false;}}
-    clear(){this.data={version:1,scoringVersion:2,bestDistance:0,bestHeight:0,flights:[]};this.save();}
+    constructor(storage){
+      this.storage=storage;this.key='balloon-day.records.v1';this.available=true;this.data=this.empty();
+      try{
+        const raw=JSON.parse(storage.getItem(this.key)||'null');
+        if(raw&&raw.version===1&&Array.isArray(raw.flights)){
+          const valid=n=>Number.isFinite(n)&&n>=0;
+          this.data.flights=raw.flights.filter(f=>f&&valid(f.distance)&&valid(f.height)&&valid(f.time)&&Number.isFinite(Date.parse(f.date))).slice(0,20);
+          this.data.totalFlights=Math.max(Number.isSafeInteger(raw.totalFlights)?raw.totalFlights:0,this.data.flights.length,...this.data.flights.map(f=>Number.isSafeInteger(f.sequence)?f.sequence:0));
+          const sequences=this.data.flights.map(f=>f.sequence);
+          if(sequences.some(n=>!Number.isSafeInteger(n)||n<1)||new Set(sequences).size!==sequences.length)this.data.flights=this.data.flights.map((f,i)=>({...f,sequence:this.data.totalFlights-i}));
+          const maxima=recordMaxima(this.data.flights);
+          this.data.bestDistance=Math.max(raw.scoringVersion===2&&valid(raw.bestDistance)?raw.bestDistance:0,maxima.distance);
+          this.data.bestHeight=Math.max(raw.scoringVersion===2&&valid(raw.bestHeight)?raw.bestHeight:0,maxima.height);
+          const cached=raw.bestFlight;
+          this.data.bestFlight=cached&&isSuccessfulFlight(cached)&&cached.distance===this.data.bestDistance?cached:this.data.flights.find(f=>isSuccessfulFlight(f)&&f.distance===this.data.bestDistance)||null;
+        }
+      }catch(error){this.available=false;}
+    }
+    empty(){return {version:1,scoringVersion:2,bestDistance:0,bestHeight:0,bestFlight:null,totalFlights:0,flights:[]};}
+    add(flight){
+      const entry={...flight,sequence:++this.data.totalFlights},success=isSuccessfulFlight(entry),isBest=success&&entry.distance>this.data.bestDistance;
+      if(success){this.data.bestDistance=Math.max(this.data.bestDistance,entry.distance);this.data.bestHeight=Math.max(this.data.bestHeight,entry.height);if(isBest)this.data.bestFlight={...entry};}
+      this.data.flights.unshift(entry);this.data.flights=this.data.flights.slice(0,20);this.save();return isBest;
+    }
+    save(){try{this.storage.setItem(this.key,JSON.stringify(this.data));this.available=true;}catch(error){this.available=false;}}
+    clear(){this.data=this.empty();this.save();}
+  }
+  function normalizePlayerNames(names=[]){
+    const result=[0,1].map(i=>Array.from(String(names[i]||'').trim()).slice(0,12).join('')||'P'+(i+1));
+    if(result[0]===result[1])result[1]=Array.from(result[1]).slice(0,10).join('')+' 2';return result;
+  }
+  class DuelMatch {
+    constructor(names){this.names=normalizePlayerNames(names);this.players=this.names.map(name=>({name,attempts:[],best:0}));this.current=0;this.waitingForNext=false;}
+    get complete(){return this.players.every(player=>player.attempts.length===5);}
+    get winners(){if(!this.complete)return [];const best=Math.max(...this.players.map(player=>player.best));return this.players.flatMap((player,i)=>player.best===best?[i]:[]);}
+    submit(result){
+      if(this.complete||this.waitingForNext)return false;
+      const player=this.players[this.current],score=isSuccessfulFlight(result)&&Number.isFinite(result.distance)?Math.max(0,result.distance):0;
+      player.attempts.push({...result,score});player.best=Math.max(player.best,score);this.waitingForNext=true;return true;
+    }
+    nextTurn(){if(!this.waitingForNext||this.complete)return false;this.current=1-this.current;this.waitingForNext=false;return true;}
+  }
+  function groundMarkers(data){
+    const position=flight=>flight.outcome==='burst'?0:Number.isFinite(flight.farthestX)?flight.farthestX:(flight.landingX<0?-1:1)*flight.distance;
+    const markers=data.flights.slice(0,20).map((flight,i)=>({position:position(flight),label:'第'+(flight.sequence||data.flights.length-i)+'次',sequence:flight.sequence||data.flights.length-i,failed:!isSuccessfulFlight(flight),playerId:flight.playerId||null}));
+    if(data.bestDistance>0)markers.push({position:data.bestFlight?position(data.bestFlight):data.bestDistance,label:'BEST '+data.bestDistance.toFixed(1)+'m',best:true,failed:false});
+    return markers;
   }
   function isWrongWay(result){return result.outcome==='wrong-way'||Number.isFinite(result.landingX)&&result.landingX<0;}
   function isSuccessfulFlight(result){return result.outcome!=='burst'&&!isWrongWay(result);}
   function recordMaxima(flights){return flights.filter(isSuccessfulFlight).reduce((best,f)=>({distance:Math.max(best.distance,f.distance),height:Math.max(best.height,f.height)}),{distance:0,height:0});}
   function rewardForResult(result){return result.outcome==='burst'?{id:'burst',label:'砰！觀眾笑翻了。'}:isWrongWay(result)?{id:'disappointed',label:'方向錯了，再試一次。'}:rewardForDistance(result.distance);}
   function rewardForDistance(distance){return distance>=30?{id:'encore',label:'全場安可！'}:distance>=15?{id:'wow',label:'哇！漂亮！'}:distance>=5?{id:'applause',label:'熱烈鼓掌！'}:{id:'polite',label:'掌聲鼓勵！'};}
-  const api={BalloonGame,RecordStore,rewardForDistance,rewardForResult,isWrongWay,isSuccessfulFlight,recordMaxima,aerodynamics,nozzleFrame,Commentator,commentCategories,COMMENT_POOLS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BalloonEngine=api;
+  const api={BalloonGame,RecordStore,DuelMatch,normalizePlayerNames,groundMarkers,rewardForDistance,rewardForResult,isWrongWay,isSuccessfulFlight,recordMaxima,aerodynamics,nozzleFrame,Commentator,commentCategories,COMMENT_POOLS};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BalloonEngine=api;
 })(typeof window!=='undefined'?window:globalThis);
