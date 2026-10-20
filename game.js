@@ -31,7 +31,7 @@
       if(!force&&!ended&&(game.phase==='flying'||game.phase==='burst')){notice('競賽中的這一趟需完成後才能換人。');return;}
       if(match.complete)match=new DuelMatch(preferences.names);else if(match.waitingForNext)match.nextTurn();
     }
-    setRecordReview(false,true);if(records.available)$('notice').hidden=true;$('result').classList.remove('match-finished');renderMatch();releaseAll();sound.reset();game.reset();ended=false;burstFX=false;savedResult=null;savedBest=false;scale=48;camX=0;camY=0;previousHint='';$('result').hidden=true;$('hint').hidden=false;$('hint').innerHTML='先吹氣，再讓氣球自由發揮！<span>↓</span>';$('flight-label').hidden=true;$('announcement').textContent='新氣球準備好了。';}
+    setRecordReview(false,true);if(records.available)$('notice').hidden=true;$('result').classList.remove('match-finished');renderMatch();releaseAll();sound.reset();game.reset();ended=false;burstFX=false;savedResult=null;savedBest=false;scale=48;camX=0;camY=0;previousHint='';$('result').hidden=true;$('hint').hidden=false;$('hint').innerHTML='按住吹氣 · 放開吸氣';$('flight-label').hidden=true;$('announcement').textContent='新氣球準備好了。';}
   function finish(){ended=true;setRecordReview(false,true);const result=savedResult||flightResult(),best=savedResult?savedBest:records.add(result);refreshBest();if(!records.available)notice('紀錄無法寫入瀏覽器；關閉頁面後本次紀錄將不會保留。');
     const burst=result.outcome==='burst',wrongWay=!burst&&window.BalloonEngine.isWrongWay(result),reward=window.BalloonEngine.rewardForResult(result);
     $('result').classList.toggle('burst-result',burst);
@@ -97,7 +97,7 @@
   resultCard.addEventListener('keydown',event=>{if(reviewing&&(event.key==='Enter'||event.key===' ')){event.preventDefault();event.stopImmediatePropagation();setRecordReview(false);}},true);
   function renderMatch(){
     const board=$('duel-scoreboard');board.hidden=!isDuel();board.replaceChildren();
-    $('player-indicator').textContent=isDuel()?match.complete?'競賽完成':match.names[match.current]+(match.waitingForNext?' · 本次完成':' · 第 '+(match.players[match.current].attempts.length+1)+' / 5 次'):preferences.names[0]+' · 單人自由飛行';
+    $('player-indicator').textContent=isDuel()?match.complete?'競賽完成':match.names[match.current]+(match.waitingForNext?' · 本次完成':' · 第 '+(match.players[match.current].attempts.length+1)+' / 5 次'):preferences.names[0]+' · 單人';
     if(!isDuel())return;
     match.players.forEach((player,index)=>{
       const card=document.createElement('div');card.className='player-score player-'+(index+1);card.classList.toggle('current',!match.complete&&index===match.current);card.classList.toggle('champion',match.complete&&match.winners.includes(index));
@@ -223,7 +223,7 @@
       ctx.fillStyle=flags.every(flag=>flag.failed)?'#e0dfdb':'#edfff1';ctx.beginPath();ctx.roundRect(left,top,width,14,3);ctx.fill();ctx.fillStyle='#32545d';ctx.fillText(text,left+width/2,top+10);
     }
     for(const flag of visible.filter(flag=>flag.best)){
-      const width=ctx.measureText(flag.label).width+16,left=Math.max(5,Math.min(w-width-5,flag.x-width/2)),top=ground-151;
+      const width=ctx.measureText(flag.label).width+16,left=Math.max(5,Math.min(w-width-5,flag.x-width/2)),top=Math.max(64,ground-151);
       line(flag.x,ground,flag.x,top+18,'#80602e',2);path([[flag.x,top+20],[flag.x+15,top+24],[flag.x,top+29]],'#f6cb59');
       ctx.fillStyle='#ffe087';ctx.beginPath();ctx.roundRect(left,top,width,20,4);ctx.fill();ctx.fillStyle='#654912';ctx.fillText(flag.label,left+width/2,top+13);
     }
@@ -255,7 +255,7 @@
       for(let i=0;i<14;i++){const a=i*Math.PI*2/14,d=12+t*(65+i%3*22);const px=x+Math.cos(a)*d,py=y+Math.sin(a)*d+t*t*50;ctx.save();ctx.globalAlpha=Math.max(0,1-t/1.2);path([[px,py],[px+7*Math.cos(a+.7),py+7*Math.sin(a+.7)],[px+10*Math.cos(a-.7),py+10*Math.sin(a-.7)]],i%2?'#ff6b9b':'#ffe776');ctx.restore();}
       ctx.fillStyle='#64213e';ctx.font='900 32px Consolas';ctx.textAlign='center';ctx.fillText('POP!',x,y-10);
     }else if(game.phase==='ready'){
-      const radius=8+37*Math.cbrt(game.volume),x=launchX+radius-5,y=ground-game.y*unit;ellipse(x,ground+2,radius*.8,4,'#1e547622');balloon(x,y,radius,-.04+Math.sin(clock*2)*.018,false);
+      const radius=(8+37*Math.cbrt(game.volume))*unit/48,x=launchX+radius-5,y=ground-game.y*unit;ellipse(x,ground+2,radius*.8,4,'#1e547622');balloon(x,y,radius,-.04+Math.sin(clock*2)*.018,false);
       if(game.volume>.01){ctx.font='bold 10px Consolas';ctx.textAlign='center';ctx.fillStyle='#582139';ctx.fillText(Math.round(game.volume*100)+'%',x+1,y+4);}
     }else{
       const sx=x=>launchX+x*unit-camX,sy=y=>ground-y*unit;
@@ -265,16 +265,16 @@
     }
   }
   let previousHint='';
-  function ui(){const breath=Math.round(game.breath*100),volume=Math.round(game.volume*100);$('breath-value').textContent=`${breath}%`;$('breath-fill').style.width=`${breath}%`;$('breath-fill').parentElement.setAttribute('aria-valuenow',String(breath));$('volume-value').textContent=`${volume}%`;$('volume-fill').style.width=`${Math.min(volume,100)}%`;document.querySelector('.volume-meter').classList.toggle('overfilled',volume>100);const danger=game.volume>.5;$('risk-note').classList.toggle('danger',danger);$('risk-note').textContent=game.phase==='burst'?'💥 爆裂！本次 0 m':danger?'⚠ 持續吹氣：約 '+(game.burstChance<.01?'低於 1':Math.round(game.burstChance*100))+'% / 秒爆裂風險':'安全區 · 超過 50% 開始有爆裂風險';$('volume-fill').parentElement.setAttribute('aria-valuenow',String(volume));
-    $('breath-label').textContent=game.blowing?'呼—— 正在吹氣':game.phase==='burst'?'💥 氣球爆掉了':game.phase!=='ready'?'這一口氣，去旅行了':game.exhausted?'沒氣了，放開吸氣':game.volume>1?'超量充氣，小心爆裂！':game.breath<.99&&!game.held?'吸—— 補充空氣中':'肺活量';
+  function ui(){const breath=Math.round(game.breath*100),volume=Math.round(game.volume*100);$('breath-value').textContent=`${breath}%`;$('breath-fill').style.width=`${breath}%`;$('breath-fill').parentElement.setAttribute('aria-valuenow',String(breath));$('volume-value').textContent=`${volume}%`;$('volume-fill').style.width=`${Math.min(volume,100)}%`;document.querySelector('.volume-meter').classList.toggle('overfilled',volume>100);const danger=game.volume>.5;$('risk-note').classList.toggle('danger',danger);$('risk-note').textContent=game.phase==='burst'?'💥 爆裂 · 0 m':danger?'⚠ 爆裂 '+(game.burstChance<.01?'低於 1':Math.round(game.burstChance*100))+'% / 秒':'50% 起有爆裂風險';$('volume-fill').parentElement.setAttribute('aria-valuenow',String(volume));
+    $('breath-label').textContent=game.blowing?'吹氣中':game.phase==='burst'?'已爆裂':game.phase!=='ready'?'肺活量':game.exhausted?'放開吸氣':game.breath<.99&&!game.held?'吸氣中':'肺活量';
     $('blow').classList.toggle('active',game.blowing);$('blow').disabled=game.phase!=='ready';$('launch').disabled=game.phase!=='ready'||game.volume<.08;$('position-label').textContent=Math.abs(game.x)<.1?'離起點':game.x<0?'← 起點左側':'起點右側 →';$('distance').innerHTML=`${Math.abs(game.x).toFixed(1)}<small>m</small>`;$('height').innerHTML=`${Math.max(0,(game.phase==='ready'||game.phase==='burst')?0:game.y).toFixed(1)}<small>m</small>`;
-    if(game.phase==='ready'&&game.volume>0){const hint=game.exhausted?'一口氣用完了，放開鍵吸氣。':game.blowing?'呼—— 氣球正在長大。':game.volume>.5?'危險！再吹可能爆掉，按 X 放飛！':game.breath<.99?'吸—— 補一口，再吹更大。':'想再吹大一點，還是現在就出發？';if(hint!==previousHint){$('hint').textContent=hint;previousHint=hint;}}
+    if(game.phase==='ready'&&game.volume>0){const hint=game.exhausted?'放開吸氣':game.blowing?'吹氣中':game.volume>.5?'小心爆裂':game.breath<.99?'吸氣中':'準備放飛';if(hint!==previousHint){$('hint').textContent=hint;previousHint=hint;}}
   }
   let uiTime=0;
   function frame(stamp){requestAnimationFrame(frame);const dt=last?Math.min((stamp-last)/1000,.05):0;last=stamp;
     const paused=pausedNow();if(!paused){clock+=dt;accumulator+=dt;while(accumulator>=1/120){game.update(1/120);accumulator-=1/120;}if(game.phase==='burst'&&!burstFX){burstFX=true;savedResult=flightResult();savedBest=records.add(savedResult);refreshBest();releaseAll();sound.burst();$('hint').hidden=true;$('announcement').textContent='氣球爆裂！本次零公尺。';}if((game.phase==='done'||game.phase==='burst'&&game.burstTime>.75)&&!ended)finish();}
     if(recordReview){scale=recordReview.scale;camX=w*(w<600?.34:.29)+recordReview.center*scale-w/2;camY=0;}else{
-    const home=isDuel()&&match.complete,cameraDt=dt*game.flightSpeed,targetScale=(home||game.phase==='ready'||game.phase==='burst')?48:Math.max(19,48-game.distance*1.1);scale+=(targetScale-scale)*Math.min(1,cameraDt*2);const targetX=(home||game.phase==='ready'||game.phase==='burst')?0:(game.x>=0?Math.max(0,game.x*scale+w*(w<600?.34:.29)-w*.60):Math.min(0,game.x*scale+w*(w<600?.34:.29)-w*.30)),targetY=(home||game.phase==='ready'||game.phase==='burst')?0:Math.max(0,game.y*scale-h*.52);camX+=(targetX-camX)*Math.min(1,cameraDt*4);camY+=(targetY-camY)*Math.min(1,cameraDt*4);
+    const home=isDuel()&&match.complete,cameraDt=dt*game.flightSpeed,homeScale=Math.min(48,Math.max(28,(h-140)/2.2)),targetScale=(home||game.phase==='ready'||game.phase==='burst')?homeScale:Math.min(homeScale,Math.max(19,48-game.distance*1.1));scale+=(targetScale-scale)*Math.min(1,cameraDt*2);const targetX=(home||game.phase==='ready'||game.phase==='burst')?0:(game.x>=0?Math.max(0,game.x*scale+w*(w<600?.34:.29)-w*.60):Math.min(0,game.x*scale+w*(w<600?.34:.29)-w*.30)),targetY=(home||game.phase==='ready'||game.phase==='burst')?0:Math.max(0,game.y*scale-h*.52);camX+=(targetX-camX)*Math.min(1,cameraDt*4);camY+=(targetY-camY)*Math.min(1,cameraDt*4);
     }
     uiTime+=dt;if(uiTime>.04){ui();sound.update(game,clock,pausedNow());uiTime=0;}draw();
   }

@@ -14,6 +14,10 @@ Manifest、圖示與 Service Worker 都使用相對路徑，支援 GitHub Pages 
 
 程式碼及原創圖示使用 MIT；第三方錄音及其 Base64 資料另依來源權利，詳見 THIRD_PARTY_NOTICES.md。圖示可用 Windows PowerShell 執行 `./create-icons.ps1` 重新產生。
 
+## 自適應介面
+
+主畫面只保留飛行數據、氣量和吹氣／放飛鍵；音效試聽收進設定。直握手機使用上方場景、下方雙按鍵；橫握手機使用左側場景、右側控制，依可用高度縮排結算與雙人比分。支援瀏海安全區、動態視窗高度、旋轉後 Canvas 重繪與紀錄瀏覽範圍重算。
+
 ## 開始遊戲
 
 雙擊 `開始遊戲.cmd` 或使用現代瀏覽器開啟 `index.html`。
